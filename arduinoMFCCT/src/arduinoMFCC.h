@@ -33,7 +33,8 @@ public:
     void compute();
     void compute(uint8_t ,uint16_t ,float , float *, float *);
     void computebust(uint8_t ,uint16_t ,float , float *, float *);
-    void computebust_dct(uint8_t ,uint8_t ,uint16_t ,float *);
+    void computebust_dct(uint8_t ,uint8_t ,uint16_t ,float *, float);
+    void computebust_dct();
     void apply_hamming_window();
     void apply_hamming_window(float *);
     void apply_hamming_window(float *,float *);
@@ -53,7 +54,6 @@ public:
     void create_dct_matrix(float **);
 
     void compute_MFCC();
-
     void setup();
     void pre_emphasis();
 
@@ -69,9 +69,10 @@ public:
     uint8_t  _hop_size;
     uint8_t  _mfcc_size;
     float** _dct_matrix;
+
 private:
     // Variables privées
-        float* coeffs;
+    float* coeffs;
 
     // Fonctions privées
 

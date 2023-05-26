@@ -77,6 +77,9 @@ void displaymenu(void) {
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0, 0);
     display.println("CHOIX 1");
+
+  loop_fs1();
+
   } else if (entered == 1) {
     display.clearDisplay();
     display.setTextSize(1);

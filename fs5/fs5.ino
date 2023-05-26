@@ -113,7 +113,6 @@ const int hop_size = 102;
 const int mfcc_size = 8;  //mfcc_size <= num_channels //coeffs finaux
 const float sample_rate = 44000.;
 
-float coeff_mfcc[250][mfcc_size];
 
 arduinoMFCC* mymfcc = new arduinoMFCC(num_channels, frame_size, hop_size, mfcc_size, sample_rate);
 
@@ -143,7 +142,7 @@ void setup() {
   }
 
   // Déclaration de l'objet MFCC
-  mymfcc->setup();
+  //mymfcc->setup();
 }
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -264,24 +263,19 @@ void loop() {
     _display.display();
     delay(2000);
 
-    for (int i = 0; i < frame_size_num; i++) {
+    for (int i = 0; i < rang1; i++) {
       for (int j = 0; j < frame_length; j++) {
         mymfcc->_frame[j] = frames[i][j];
       }
-      mymfcc->compute_MFCC();
-      for (int j = 0; j < mfcc_size; j++) {
-        coeff_mfcc[i][j] = mymfcc->_rmfcc_coeffs[j];
-      }
-    }
-
-    Serial.println("Coeffs MFCC");
-    for (int i = 0; i < frame_size_num; i++) {
-      for (int j = 0; j < mfcc_size; j++) {
-        Serial.print(coeff_mfcc[i][j]);
+      mymfcc->computebust_dct();
+      for (int j = 0; j < num_channels; j++) {
+        Serial.print(mymfcc->_frame[j]);
         Serial.print(" | ");
       }
       Serial.println();
+
     }
+
   }
 
   // Vérifie si le transfert DMA est terminé

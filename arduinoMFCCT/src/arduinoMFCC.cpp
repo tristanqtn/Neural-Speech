@@ -34,35 +34,16 @@ arduinoMFCC::arduinoMFCC(uint8_t  num_channels, uint16_t  frame_size, uint8_t  h
     _samplerate=samplerate;
     _frame = (float*)malloc(_frame_size * sizeof(float));
     _hamming_window = (float*)malloc(_frame_size * sizeof(float));
-    //_mel_filter_bank = (float*)malloc(_num_channels * _frame_size * sizeof(float));
-    float **_mel_filter_bank  = (float **)malloc(_num_channels * sizeof(float *));
-        for (uint8_t i = 0; i < _num_channels; i++) {
-             _mel_filter_bank[i] = (float *)malloc((_frame_size/2) * sizeof(float));//
-             }
-    float **_dct_matrix  = (float **)malloc(_mfcc_size * sizeof(float *));
-        for (uint8_t i = 0; i < _mfcc_size; i++) {
-             _dct_matrix[i] = (float *)malloc(_num_channels * sizeof(float));//
-             }             
-    //_dct_matrix = (float*)malloc(_mfcc_size * _num_channels * sizeof(float));
-
     _rmfcc_coeffs = (float*)malloc(_mfcc_size * sizeof(float)); 
-    _mfcc_coeffs = (float*)malloc(_num_channels* sizeof(float)); 	
+    _mfcc_coeffs = (float*)malloc(_num_channels* sizeof(float)); 
+
+
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 arduinoMFCC::~arduinoMFCC() {
     free(_frame);
     free(_hamming_window);
-    for (int i = 0; i < _num_channels; i++) {
-          free(_mel_filter_bank[i]);
-          }
-    free(_mel_filter_bank);
-    //
-    for (int i = 0; i < _mfcc_size; i++) {
-          free(_dct_matrix[i]);
-          }
-    free(_dct_matrix);
-    //
     free(_rmfcc_coeffs);
     free(_mfcc_coeffs);
 
@@ -112,14 +93,34 @@ void arduinoMFCC::computebust(uint8_t _num_channels,uint16_t _frame_size,float _
 
     }
 //////////////////////////////////////////////////////////////////////////
-void arduinoMFCC::computebust_dct(uint8_t _mfcc_size,uint8_t _num_channels,uint16_t  _frame_size,float *_rmfcc_coeffs) {
+void arduinoMFCC::computebust_dct(uint8_t _mfcc_size,uint8_t _num_channels,uint16_t  _frame_size,float *_rmfcc_coeffs, float _samplerate) {
     // ... code pour calculer les coefficients arduinoMFCC ...
-    pre_emphasis(_frame_size, _frame); 
-    create_hamming_window(_frame_size, _hamming_window); 
+    pre_emphasis(_frame_size, _frame);
+    Serial.println("TEST 1 OK"); 
+    create_hamming_window(_frame_size, _hamming_window);
+    Serial.println("TEST 2 OK"); 
     apply_hamming_window(_frame,_hamming_window);
+    Serial.println("TEST 3 OK");
+    create_mel_filter_bank(_samplerate,_num_channels,_frame_size,_mel_filter_bank);
+    Serial.println("TEST 4 OK"); 
+    apply_mel_filter_bank_power(_frame_size,_frame); //FFT ici
+    Serial.println("TEST 5 OK");
     apply_mel_filter_bank(_num_channels,_frame_size,_frame,_mel_filter_bank,_mfcc_coeffs);
+    Serial.println("TEST 6 OK");
     apply_dct(_mfcc_size,_num_channels,_frame_size,_mel_filter_bank,_mfcc_coeffs,_rmfcc_coeffs);
-    }
+    Serial.println("TEST 7 OK");
+}
+
+
+void arduinoMFCC::computebust_dct() {
+    // ... code pour calculer les coefficients arduinoMFCC ...
+    pre_emphasis();
+    create_hamming_window();
+    apply_hamming_window();
+    apply_mel_filter_bank_power(); //FFT ici
+    create_mel_filter_bank();
+    create_dct_matrix();
+}
 
 //TITI CODE
 void arduinoMFCC::compute_MFCC() {
@@ -134,8 +135,11 @@ void arduinoMFCC::compute_MFCC() {
 void arduinoMFCC::setup() {
     // ... code pour calculer les coefficients arduinoMFCC ...
     create_hamming_window(); 
+    Serial.println("HAMMING OK");
     create_mel_filter_bank();
+    Serial.println("MEL FILTER OK");
     create_dct_matrix();
+    Serial.println("DCT MATRIX OK");
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -168,14 +172,20 @@ void arduinoMFCC::create_hamming_window(uint16_t  _frame_size, float *_hamming_w
 ///////////////////////////////////////////////////////////////////////////
 // Fonction publique pour créer les filtres de Mel
 void arduinoMFCC::create_mel_filter_bank()
- {
-      float f_low          = 300.;  
+{
+    float f_low          = 300.;  
     float f_high         = _samplerate; // Nyquist Frequency
     float mel_low_freq   = 2595. * log10f(1 + (f_low / 2.) / 700.);
     float mel_high_freq  = 2595. * log10f(1 + (f_high / 2.) / 700.);
     float* mel_f         = (float*)malloc((_num_channels + 2) * sizeof(float));
     float* hzPoints      = (float*)malloc((_num_channels + 2) * sizeof(float)); // Corresponding Hz scale points
-  // Calculate Mel and Hz scale points
+        
+        float **_mel_filter_bank  = (float **)malloc(_num_channels * sizeof(float *));
+        for (uint8_t i = 0; i < _num_channels; i++) {
+             _mel_filter_bank[i] = (float *)malloc((_frame_size/2) * sizeof(float));//
+             }
+
+	  // Calculate Mel and Hz scale points
     float mel_freq_delta = (mel_high_freq - mel_low_freq) / (_num_channels + 1);
   for (uint8_t i = 0; i < _num_channels + 2; i++) {
     mel_f[i] = mel_low_freq + i * mel_freq_delta;
@@ -195,8 +205,18 @@ void arduinoMFCC::create_mel_filter_bank()
         _mel_filter_bank[i][j] = 0;
     }
   }
-  free(mel_f);
-  free(hzPoints);
+
+   for (uint8_t  i = 0; i < _num_channels; i++) {
+        float output = 0.0f;
+        for (uint16_t  j = 0; j < _frame_size/2; j++) {
+            output += _frame[j] * _mel_filter_bank[i][j];
+        }
+        _mfcc_coeffs[i] = log10f(output);
+    }
+    for (int i = 0; i < _num_channels; i++) {
+          free(_mel_filter_bank[i]);
+          }
+    free(_mel_filter_bank);
 }
 ////////////////////////////////////////////////////////////////////////////////////
 void arduinoMFCC::create_mel_filter_bank(float _samplerate, uint8_t _num_channels, uint16_t _frame_size, float **_mel_filter_bank) 
@@ -235,6 +255,12 @@ void arduinoMFCC::create_mel_filter_bank(float _samplerate, uint8_t _num_channel
 // Function is OK
 void arduinoMFCC::create_dct_matrix() {
     // ... code pour créer la matrice DCT ...
+
+            float **_dct_matrix  = (float **)malloc(_mfcc_size * sizeof(float *));
+        for (uint8_t i = 0; i < _mfcc_size; i++) {
+             _dct_matrix[i] = (float *)malloc(_num_channels * sizeof(float));//
+             }       
+
 	float sqrt_2_over_n = sqrt(2.0 / _num_channels);
 	for (uint8_t  i = 0; i < _mfcc_size; i++) {
     for (uint8_t  j = 0; j < _num_channels; j++) {
@@ -245,6 +271,19 @@ void arduinoMFCC::create_dct_matrix() {
 
 }
   }
+
+      for (uint8_t  i = 0; i < _mfcc_size; i++) {
+        _rmfcc_coeffs[i] = 0.0;
+        for (uint8_t  j = 0; j < _num_channels; j++) {
+            _rmfcc_coeffs[i] += _mfcc_coeffs[j] *_dct_matrix[i][j];
+        }
+    }
+
+        for (int i = 0; i < _mfcc_size; i++) {
+          free(_dct_matrix[i]);
+          }
+    free(_dct_matrix);
+
 }
 /////////////////////////////////////////////////////////////////////////////
 // Fonction publique pour créer la matrice de transformée de cosinus discrète (DCT)
@@ -344,12 +383,7 @@ void arduinoMFCC::apply_mel_filter_bank(uint8_t  _num_channels, uint16_t  _frame
 /////////////////////////////////////////////////////////////////////////////
 // Fonction publique pour appliquer la transformée de cosinus discrète (DCT) au signal audio
 void arduinoMFCC::apply_dct() {
-      for (uint8_t  i = 0; i < _mfcc_size; i++) {
-        _rmfcc_coeffs[i] = 0.0;
-        for (uint8_t  j = 0; j < _num_channels; j++) {
-            _rmfcc_coeffs[i] += _mfcc_coeffs[j] *_dct_matrix[i][j];
-        }
-    }
+
 }
 
 /////////////////////////////////////////////////////////////////////////////
