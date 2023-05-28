@@ -268,13 +268,15 @@ void loop() {
         mymfcc->_frame[j] = frames[i][j];
       }
       mymfcc->computebust_dct();
-      for (int j = 0; j < num_channels; j++) {
-        Serial.print(mymfcc->_frame[j]);
+      for (int j = 0; j < mfcc_size; j++) {
+        Serial.print(mymfcc->_rmfcc_coeffs[j]);
         Serial.print(" | ");
       }
       Serial.println();
 
     }
+
+  }
 
   }
 
